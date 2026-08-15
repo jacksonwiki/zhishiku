@@ -1,0 +1,108 @@
+[
+  {
+    "number": 1,
+    "category": "阶段 1：基础设施",
+    "task": "安装 AkShare 依赖并扩展配置",
+    "steps": [
+      { "step": "pip install akshare，确认可导入", "completed": false },
+      { "step": "app/config.py 新增 stock_data_provider / akshare_cache_ttl 等配置", "completed": false },
+      { "step": ".env.example 同步新增配置项说明", "completed": false }
+    ],
+    "passes": false
+  },
+  {
+    "number": 2,
+    "category": "阶段 2：股票数据引擎",
+    "task": "实现 app/rag/stock_data.py — 封装 AkShare 数据接口（返回结构化数据供图表使用）",
+    "steps": [
+      { "step": "实现 get_stock_quote(code)：实时行情（价格/涨跌/成交量）", "completed": false },
+      { "step": "实现 get_stock_kline(code, period, count)：K线数据（OHLCV 数组，前端可直接渲染蜡烛图）", "completed": false },
+      { "step": "实现 get_financial_indicators(code)：财务指标（PE/PB/ROE/营收/利润，多期数据供雷达图）", "completed": false },
+      { "step": "实现 get_stock_news(code)：个股新闻列表", "completed": false },
+      { "step": "实现 get_money_flow(code)：资金流向（主力/散户，正负值供柱状图）", "completed": false },
+      { "step": "添加内存缓存（TTL 60s），避免频繁调用 AkShare", "completed": false },
+      { "step": "股票代码验证：支持 6 位数字 + 常见前缀（sh/sz/bj）", "completed": false },
+      { "step": "各接口返回 dict 含 chart_type 字段，标明前端应渲染的图表类型", "completed": false }
+    ],
+    "passes": false
+  },
+  {
+    "number": 3,
+    "category": "阶段 3：动态提示词管理",
+    "task": "实现 app/rag/prompt_manager.py — 提示词模板 CRUD + 变量插值",
+    "steps": [
+      { "step": "SQLite 建 prompt_templates 表（id/name/category/content/variables/created_at/updated_at）", "completed": false },
+      { "step": "实现 create_template / list_templates / get_template / update_template / delete_template", "completed": false },
+      { "step": "实现 render_template(template_id, variables) — 变量插值（{{stock_code}} {{stock_name}} 等）", "completed": false },
+      { "step": "预置 3 个默认模板：快速分析 / 深度研报 / 行业对比（prompt 中指引 LLM 输出 mermaid 流程图）", "completed": false }
+    ],
+    "passes": false
+  },
+  {
+    "number": 4,
+    "category": "阶段 4：股票工具集",
+    "task": "实现 app/rag/stock_tools.py — LangChain Tool 封装（工具返回附带图表数据）",
+    "steps": [
+      { "step": "封装 get_stock_quote_tool：获取实时行情数据", "completed": false },
+      { "step": "封装 get_stock_kline_tool：获取K线数据，返回 OHLCV + 计算后的 MA5/MA10/MA20/MACD/KDJ 指标", "completed": false },
+      { "step": "封装 get_financial_data_tool：获取多期财务指标（供雷达图渲染）", "completed": false },
+      { "step": "封装 get_stock_news_tool：获取个股新闻（复用 Tavily）", "completed": false },
+      { "step": "封装 get_money_flow_tool：获取资金流向（正负值供柱状图）", "completed": false },
+      { "step": "工具执行时通过 ctx 收集 chart_data，供 SSE 推送 chart 事件", "completed": false },
+      { "step": "实现 run_stock_agent / run_stock_agent_stream — 复用 tools.py 历史压缩与流式逻辑，SSE 新增 chart 事件", "completed": false }
+    ],
+    "passes": false
+  },
+  {
+    "number": 5,
+    "category": "阶段 5：API 接口",
+    "task": "实现 app/api/stock_research.py — 研报 API 路由（SSE 含 chart 事件）",
+    "steps": [
+      { "step": "POST /api/stock_research/chat — 研报对话（支持 prompt_id 选择提示词模板）", "completed": false },
+      { "step": "POST /api/stock_research/chat/stream — 流式研报对话（SSE 含 token/tool_call/chart/sources/done 事件）", "completed": false },
+      { "step": "GET/POST/PUT/DELETE /api/stock_research/prompts — 提示词模板 CRUD", "completed": false },
+      { "step": "GET /api/stock_research/reports — 历史研报列表", "completed": false },
+      { "step": "schemas.py 新增 StockResearchRequest / StockPromptTemplate / ChartData 等模型", "completed": false },
+      { "step": "main.py 注册 stock_research_router 路由 + stock_research 页面路由", "completed": false }
+    ],
+    "passes": false
+  },
+  {
+    "number": 6,
+    "category": "阶段 6：前端界面与图表",
+    "task": "实现研报前端页面（stock_research.html + stock_research.js）含 ECharts 图表与 Mermaid 流程图",
+    "steps": [
+      { "step": "页面布局：顶部股票搜索栏 + 左侧会话列表 + 主区域报告展示", "completed": false },
+      { "step": "提示词选择器：切换分析模式（快速分析/深度研报/行业对比）", "completed": false },
+      { "step": "引入 ECharts 5 CDN + Mermaid.js CDN", "completed": false },
+      { "step": "SSE 流式接收：处理 token/tool_call/chart/sources/done 五种事件", "completed": false },
+      { "step": "K 线图渲染：收到 chart{kline} 事件时，用 ECharts candlestick 渲染 OHLCV + 成交量副图", "completed": false },
+      { "step": "技术指标图渲染：收到 chart{indicators} 事件时，叠加 MA 均线/MACD/KDJ 副图", "completed": false },
+      { "step": "资金流向图渲染：收到 chart{money_flow} 事件时，用 ECharts 正负柱状图渲染", "completed": false },
+      { "step": "财务雷达图渲染：收到 chart{financial} 事件时，用 ECharts radar 多维度展示", "completed": false },
+      { "step": "Mermaid 流程图渲染：Markdown 渲染器识别 ```mermaid 代码块，调用 mermaid.render()", "completed": false },
+      { "step": "报告结构化渲染：摘要/基本面/技术面/资金面/新闻/预测 各模块分区展示，图表插入对应模块", "completed": false },
+      { "step": "来源引用与数据表格样式", "completed": false },
+      { "step": "提示词管理面板：查看/编辑/新增模板", "completed": false }
+    ],
+    "passes": false
+  },
+  {
+    "number": 7,
+    "category": "阶段 7：集成与测试",
+    "task": "端到端集成验证（含图表渲染）",
+    "steps": [
+      { "step": "重启服务，验证研报页面可访问", "completed": false },
+      { "step": "输入股票代码，验证数据工具正确返回行情", "completed": false },
+      { "step": "验证 K 线蜡烛图正确渲染（OHLCV + 成交量）", "completed": false },
+      { "step": "验证技术指标图叠加（MA/MACD/KDJ）", "completed": false },
+      { "step": "验证资金流向柱状图渲染", "completed": false },
+      { "step": "验证财务雷达图渲染", "completed": false },
+      { "step": "验证 Mermaid 流程图在报告中正确渲染", "completed": false },
+      { "step": "验证流式研报生成，检查报告结构化渲染", "completed": false },
+      { "step": "验证提示词模板 CRUD 功能", "completed": false },
+      { "step": "验证原有客服功能不受影响", "completed": false }
+    ],
+    "passes": false
+  }
+]

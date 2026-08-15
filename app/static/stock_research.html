@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票研报助手</title>
+    <link rel="stylesheet" href="/static/styles.css?v=2">
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --sr-primary: #4f46e5;
+            --sr-primary-light: #6366f1;
+            --sr-sidebar-bg: #0f172a;
+            --sr-card-bg: #ffffff;
+            --sr-radius: 14px;
+            --sr-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            --sr-text: #1e293b;
+            --sr-text-secondary: #64748b;
+            --sr-border: #e2e8f0;
+            --sr-up: #ef4444;
+            --sr-down: #10b981;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f1f5f9;
+            color: var(--sr-text);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+        /* 侧边栏 */
+        .sr-sidebar {
+            width: 260px;
+            min-width: 260px;
+            background: var(--sr-sidebar-bg);
+            color: #cbd5e1;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s;
+        }
+        .sr-sidebar-header {
+            padding: 20px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .sr-brand {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .sr-brand-sub {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        .sr-new-btn {
+            margin: 12px 16px;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, var(--sr-primary), var(--sr-primary-light));
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .sr-new-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(79,70,229,0.3);
+        }
+        .sr-session-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .sr-session-item {
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background 0.15s;
+        }
+        .sr-session-item:hover { background: rgba(255,255,255,0.06); }
+        .sr-session-item.active { background: rgba(99,102,241,0.2); }
+        .sr-session-title {
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+        .sr-session-del {
+            opacity: 0;
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 4px;
+            transition: opacity 0.15s;
+        }
+        .sr-session-item:hover .sr-session-del { opacity: 1; }
+        .sr-sidebar-footer {
+            padding: 12px 16px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            font-size: 12px;
+        }
+        .sr-user-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(99,102,241,0.15);
+            color: #a5b4fc;
+            font-size: 12px;
+        }
+        /* 主区域 */
+        .sr-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .sr-topbar {
+            padding: 12px 20px;
+            background: #fff;
+            border-bottom: 1px solid var(--sr-border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+        .sr-search-input {
+            flex: 1;
+            max-width: 400px;
+            padding: 8px 14px;
+            border: 1px solid var(--sr-border);
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .sr-search-input:focus {
+            border-color: var(--sr-primary);
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+        }
+        .sr-prompt-select {
+            padding: 8px 12px;
+            border: 1px solid var(--sr-border);
+            border-radius: 10px;
+            font-size: 13px;
+            background: #fff;
+            cursor: pointer;
+            outline: none;
+        }
+        .sr-prompt-manage-btn {
+            padding: 6px 10px;
+            border: 1px solid var(--sr-border);
+            border-radius: 8px;
+            background: #fff;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--sr-text-secondary);
+        }
+        .sr-prompt-manage-btn:hover { border-color: var(--sr-primary); color: var(--sr-primary); }
+        /* 报告区域 */
+        .sr-report-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .sr-welcome {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--sr-text-secondary);
+        }
+        .sr-welcome-icon { font-size: 48px; margin-bottom: 16px; }
+        .sr-welcome-title { font-size: 20px; font-weight: 600; color: var(--sr-text); margin-bottom: 8px; }
+        .sr-welcome-desc { font-size: 14px; }
+        .sr-welcome-examples {
+            margin-top: 24px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .sr-example-btn {
+            padding: 6px 14px;
+            border: 1px solid var(--sr-border);
+            border-radius: 20px;
+            background: #fff;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--sr-text-secondary);
+            transition: all 0.15s;
+        }
+        .sr-example-btn:hover {
+            border-color: var(--sr-primary);
+            color: var(--sr-primary);
+            background: rgba(79,70,229,0.04);
+        }
+        /* 研报消息 */
+        .sr-message {
+            margin-bottom: 20px;
+            animation: srFadeIn 0.3s ease;
+        }
+        @keyframes srFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .sr-msg-user {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 16px;
+        }
+        .sr-bubble-user {
+            max-width: 70%;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, var(--sr-primary), var(--sr-primary-light));
+            color: #fff;
+            border-radius: 16px 16px 4px 16px;
+            font-size: 14px;
+        }
+        .sr-msg-ai {
+            background: #fff;
+            border-radius: var(--sr-radius);
+            box-shadow: var(--sr-shadow);
+            overflow: hidden;
+        }
+        .sr-ai-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--sr-border);
+            font-size: 13px;
+            color: var(--sr-text-secondary);
+        }
+        .sr-mode-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: auto;
+            font-weight: 500;
+        }
+        .sr-mode-badge.sr-mode-stock {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+        }
+        .sr-mode-badge.sr-mode-general {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff;
+        }
+        .sr-ai-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        /* ======== AI 消息正文 + Markdown 渲染 ======== */
+        .sr-ai-body {
+            padding: 16px 20px;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #1e293b;
+            word-break: break-word;
+            letter-spacing: 0.01em;
+        }
+        .sr-ai-body h1, .sr-ai-body h2, .sr-ai-body h3, .sr-ai-body h4 {
+            margin: 28px 0 14px;
+            line-height: 1.35;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .sr-ai-body h1 {
+            font-size: 19px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+            background: linear-gradient(180deg, transparent 60%, rgba(79,70,229,0.08) 60%);
+            padding: 8px 12px;
+            border-radius: 8px;
+        }
+        .sr-ai-body h2 {
+            font-size: 16px;
+            padding: 6px 14px;
+            background: linear-gradient(90deg, rgba(79,70,229,0.12), rgba(79,70,229,0.02));
+            border-left: 4px solid #4f46e5;
+            border-radius: 0 6px 6px 0;
+        }
+        .sr-ai-body h3 {
+            font-size: 15px;
+            color: #1e293b;
+            padding-bottom: 4px;
+            border-bottom: 1px dashed #cbd5e1;
+            display: inline-block;
+        }
+        .sr-ai-body h4 { font-size: 14px; color: #334155; }
+
+        .sr-ai-body p { margin: 12px 0; }
+        .sr-ai-body ul, .sr-ai-body ol {
+            margin: 12px 0;
+            padding-left: 28px;
+        }
+        .sr-ai-body li { margin: 6px 0; line-height: 1.75; }
+        .sr-ai-body li > ul, .sr-ai-body li > ol { margin: 6px 0; }
+
+        .sr-ai-body strong { font-weight: 700; color: #4f46e5; }
+        .sr-ai-body em { font-style: italic; color: #6366f1; }
+        .sr-ai-body del { text-decoration: line-through; color: #94a3b8; }
+
+        .sr-ai-body a {
+            color: #4f46e5;
+            text-decoration: none;
+            border-bottom: 1px dashed #c7d2fe;
+            transition: color .15s, border-color .15s;
+        }
+        .sr-ai-body a:hover { color: #4338ca; border-bottom-color: #4f46e5; }
+
+        .sr-ai-body sup { font-size: 0.75em; vertical-align: super; }
+
+        /* 行内代码 */
+        .sr-md-inline-code {
+            background: linear-gradient(180deg, #fef3c7, #fde68a);
+            color: #92400e;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
+            border: 1px solid #fcd34d;
+            font-weight: 500;
+        }
+
+        /* 代码块 */
+        .sr-md-code-block {
+            background: linear-gradient(180deg, #1e293b, #0f172a);
+            color: #e2e8f0;
+            padding: 16px 18px;
+            border-radius: 12px;
+            overflow-x: auto;
+            margin: 16px 0;
+            font-size: 13px;
+            line-height: 1.6;
+            box-shadow: 0 4px 16px rgba(15,23,42,0.12);
+            border: 1px solid #334155;
+        }
+        .sr-md-code-block code {
+            font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
+            white-space: pre;
+            background: transparent;
+            padding: 0;
+            color: inherit;
+            font-size: inherit;
+            line-height: inherit;
+        }
+
+        /* 表格 */
+        .sr-ai-body .table-wrapper {
+            overflow-x: auto;
+            margin: 16px 0;
+            border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .sr-mermaid-block {
+            margin: 16px 0;
+            padding: 16px;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid var(--sr-border);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            overflow-x: auto;
+            text-align: center;
+        }
+        .sr-mermaid-block svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .sr-ai-body table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .sr-ai-body thead {
+            background: linear-gradient(180deg, #eef2ff, #e0e7ff);
+        }
+        .sr-ai-body th {
+            padding: 11px 14px;
+            text-align: left;
+            font-weight: 600;
+            color: #3730a3;
+            border-bottom: 2px solid #c7d2fe;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+        .sr-ai-body td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #475569;
+            font-size: 13px;
+        }
+        .sr-ai-body tbody tr {
+            transition: background-color .12s;
+        }
+        .sr-ai-body tbody tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+        .sr-ai-body tbody tr:hover {
+            background-color: #eef2ff;
+        }
+        .sr-ai-body tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* 引用块 */
+        .sr-ai-body blockquote {
+            margin: 14px 0;
+            padding: 12px 18px;
+            border-left: 4px solid #6366f1;
+            background: linear-gradient(90deg, rgba(99,102,241,0.08), rgba(99,102,241,0.02));
+            border-radius: 0 10px 10px 0;
+            color: #475569;
+        }
+        .sr-ai-body blockquote p { margin: 6px 0; }
+        .sr-ai-body blockquote strong { color: #4f46e5; }
+
+        /* 分隔线 */
+        .sr-ai-body hr {
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #cbd5e1, transparent);
+            margin: 24px 0;
+        }
+
+        /* 列表标记 */
+        .sr-ai-body ul > li::marker { color: #4f46e5; font-weight: 700; }
+        .sr-ai-body ol > li::marker { color: #6366f1; font-weight: 700; }
+        .sr-citation {
+            display: inline-block;
+            background: rgba(79,70,229,0.1);
+            color: var(--sr-primary);
+            border-radius: 4px;
+            padding: 1px 5px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 0 2px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .sr-citation:hover { background: rgba(79,70,229,0.25); }
+        /* Sources Section */
+        .sr-sources-section {
+            margin-top: 16px;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #f0f4ff, #e8ecff);
+            border: 1px solid #c7d2fe;
+            border-radius: 10px;
+        }
+        .sr-sources-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #4f46e5;
+            margin-bottom: 8px;
+        }
+        .sr-sources-list {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        .sr-sources-list li a {
+            color: #2563eb;
+            text-decoration: none;
+            word-break: break-all;
+        }
+        .sr-sources-list li a:hover {
+            text-decoration: underline;
+        }
+        .sr-source-kb {
+            color: #6b7280 !important;
+            font-style: italic;
+        }
+        /* PDF Action Bar */
+        .sr-pdf-bar {
+            margin-top: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            border: 1px solid #6ee7b7;
+            border-radius: 10px;
+        }
+        .sr-pdf-bar.error {
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            border-color: #fecaca;
+        }
+        .sr-pdf-bar.loading {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            border-color: #fde68a;
+        }
+        .sr-pdf-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+            min-width: 0;
+        }
+        .sr-pdf-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #065f46;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sr-pdf-bar.error .sr-pdf-title { color: #991b1b; }
+        .sr-pdf-bar.loading .sr-pdf-title { color: #92400e; }
+        .sr-pdf-meta {
+            font-size: 12px;
+            color: #047857;
+        }
+        .sr-pdf-bar.error .sr-pdf-meta { color: #b91c1c; }
+        .sr-pdf-bar.loading .sr-pdf-meta { color: #a16207; }
+        .sr-pdf-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            background: #10b981;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .15s ease;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+        .sr-pdf-btn:hover { background: #059669; transform: translateY(-1px); }
+        .sr-pdf-btn.secondary {
+            background: #fff;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+        .sr-pdf-btn.secondary:hover { background: #ecfdf5; }
+        .sr-pdf-btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        /* Agent Trace */
+        .sr-trace {
+            padding: 8px 16px;
+            background: #f8fafc;
+            border-top: 1px solid var(--sr-border);
+        }
+        .sr-trace-title {
+            font-size: 12px;
+            color: var(--sr-text-secondary);
+            margin-bottom: 6px;
+        }
+        .sr-trace-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            background: #fff;
+            border: 1px solid var(--sr-border);
+            border-radius: 20px;
+            font-size: 12px;
+            margin: 0 4px 4px 0;
+            color: var(--sr-text-secondary);
+        }
+        .sr-trace-icon { font-size: 13px; }
+        /* 思考动画 */
+        .sr-thinking {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 20px;
+            color: var(--sr-text-secondary);
+            font-size: 14px;
+        }
+        .sr-dots {
+            display: flex;
+            gap: 4px;
+        }
+        .sr-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--sr-primary);
+            animation: srBounce 0.6s infinite alternate;
+        }
+        .sr-dot:nth-child(2) { animation-delay: 0.2s; }
+        .sr-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes srBounce {
+            to { transform: translateY(-6px); opacity: 0.4; }
+        }
+        /* 输入区 */
+        .sr-input-area {
+            padding: 12px 20px;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(8px);
+            border-top: 1px solid var(--sr-border);
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .sr-input {
+            flex: 1;
+            padding: 10px 16px;
+            border: 1px solid var(--sr-border);
+            border-radius: 12px;
+            font-size: 14px;
+            outline: none;
+            resize: none;
+            min-height: 42px;
+            max-height: 120px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .sr-input:focus {
+            border-color: var(--sr-primary);
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+        }
+        .sr-send-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--sr-primary), var(--sr-primary-light));
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .sr-send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(79,70,229,0.3);
+        }
+        .sr-send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .sr-send-btn.sr-stop-btn {
+            background: linear-gradient(135deg, #ef4444, #f87171);
+        }
+        .sr-send-btn.sr-stop-btn:hover {
+            box-shadow: 0 4px 12px rgba(239,68,68,0.3);
+        }
+        /* Prompt 管理弹窗 */
+        .sr-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .sr-modal-overlay.show { display: flex; }
+        .sr-modal {
+            background: #fff;
+            border-radius: var(--sr-radius);
+            width: 700px;
+            max-width: 90vw;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        .sr-modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--sr-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .sr-modal-title { font-size: 16px; font-weight: 600; }
+        .sr-modal-close {
+            background: none; border: none; font-size: 20px; cursor: pointer;
+            color: var(--sr-text-secondary);
+        }
+        .sr-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+        }
+        .sr-prompt-card {
+            border: 1px solid var(--sr-border);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        .sr-prompt-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .sr-prompt-card-name { font-weight: 600; font-size: 14px; }
+        .sr-prompt-cat-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .sr-cat-quick { background: #dbeafe; color: #2563eb; }
+        .sr-cat-deep { background: #ede9fe; color: #7c3aed; }
+        .sr-cat-industry { background: #dcfce7; color: #16a34a; }
+        .sr-cat-custom { background: #fef3c7; color: #d97706; }
+        .sr-prompt-card-content {
+            font-size: 12px;
+            color: var(--sr-text-secondary);
+            white-space: pre-wrap;
+            max-height: 100px;
+            overflow-y: auto;
+            background: #f8fafc;
+            padding: 8px;
+            border-radius: 6px;
+        }
+        .sr-prompt-actions { margin-top: 8px; display: flex; gap: 8px; }
+        .sr-btn-sm {
+            padding: 4px 10px;
+            border: 1px solid var(--sr-border);
+            border-radius: 6px;
+            background: #fff;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .sr-btn-sm:hover { border-color: var(--sr-primary); color: var(--sr-primary); }
+        .sr-btn-sm.danger:hover { border-color: #ef4444; color: #ef4444; }
+        .sr-edit-area {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .sr-edit-area.show { display: flex; }
+        .sr-edit-area input, .sr-edit-area textarea {
+            padding: 6px 10px;
+            border: 1px solid var(--sr-border);
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+        }
+        .sr-edit-area textarea { min-height: 120px; resize: vertical; }
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .sr-sidebar { position: fixed; z-index: 50; transform: translateX(-100%); height: 100%; }
+            .sr-sidebar.show { transform: translateX(0); }
+            .sr-topbar { flex-wrap: wrap; }
+        }
+
+        /* ===== Tab 切换 ===== */
+        .sr-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 8px 16px 0;
+            background: #fafbfc;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .sr-tab {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: #64748b;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 6px 6px 0 0;
+            border-bottom: 2px solid transparent;
+            transition: all .15s;
+        }
+        .sr-tab:hover { background: #f1f5f9; color: #1e293b; }
+        .sr-tab.active {
+            color: #4f46e5;
+            border-bottom-color: #4f46e5;
+            background: #fff;
+            font-weight: 600;
+        }
+        .sr-tab-panel { display: none; flex: 1; min-height: 0; flex-direction: column; overflow: auto; }
+        .sr-tab-panel.active { display: flex; }
+
+        /* ===== 知识库区域通用 ===== */
+        .sr-kb-section {
+            background: #fff;
+            margin: 16px;
+            padding: 16px 20px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        .sr-kb-section h3 { margin: 0 0 12px; font-size: 15px; color: #1e293b; }
+        .sr-kb-section-head {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px;
+        }
+        .sr-kb-section-head h3 { margin: 0; }
+        .sr-kb-toolbar { display: flex; gap: 8px; }
+        .sr-kb-toolbar input {
+            padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px;
+            font-size: 13px; width: 200px;
+        }
+        .sr-kb-form { display: flex; flex-direction: column; gap: 10px; }
+        .sr-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #475569; }
+        .sr-field.inline { flex-direction: row; align-items: center; gap: 8px; }
+        .sr-field input[type=text],
+        .sr-field input[type=number],
+        .sr-field textarea {
+            padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px;
+            font-size: 13px; font-family: inherit;
+        }
+        .sr-field textarea { resize: vertical; }
+        .sr-kb-actions { display: flex; gap: 8px; margin-top: 4px; }
+        .sr-btn {
+            padding: 7px 16px; border: 1px solid #d1d5db; background: #fff;
+            border-radius: 6px; font-size: 13px; cursor: pointer; color: #374151;
+        }
+        .sr-btn:hover { background: #f9fafb; }
+        .sr-btn.primary { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+        .sr-btn.primary:hover { background: #4338ca; }
+        .sr-btn.danger { color: #dc2626; border-color: #fecaca; }
+        .sr-btn.danger:hover { background: #fef2f2; }
+        .sr-btn.danger:disabled { color: #9ca3af; border-color: #e5e7eb; background: #f9fafb; cursor: not-allowed; }
+        .sr-msg { font-size: 12px; color: #64748b; min-height: 16px; margin: 4px 0 0; }
+        .sr-msg.success { color: #16a34a; }
+        .sr-msg.error { color: #dc2626; }
+        .sr-hint { font-size: 12px; color: #64748b; margin: -4px 0 8px; }
+
+        /* 拖拽上传区 */
+        .sr-dropzone {
+            border: 2px dashed #cbd5e1; border-radius: 8px; padding: 24px;
+            text-align: center; cursor: pointer; transition: all .15s;
+            background: #f8fafc;
+        }
+        .sr-dropzone:hover, .sr-dropzone.dragover { border-color: #6366f1; background: #eef2ff; }
+        .sr-drop-title { margin: 0 0 4px; font-size: 14px; color: #475569; }
+        .sr-drop-sub { margin: 0; font-size: 12px; color: #94a3b8; }
+        .sr-file-list { margin-top: 8px; }
+        .sr-file-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 10px; background: #f8fafc; border-radius: 6px;
+            font-size: 13px; margin-bottom: 4px;
+        }
+        .sr-file-item .size { color: #94a3b8; font-size: 11px; margin-left: 6px; }
+        .sr-file-item .status { font-size: 12px; margin-right: 8px; }
+        .sr-file-item .status.success { color: #16a34a; }
+        .sr-file-item .status.error { color: #dc2626; }
+        .sr-file-item .remove { cursor: pointer; color: #94a3b8; }
+        .sr-file-item .remove:hover { color: #dc2626; }
+
+        /* 表格 */
+        .sr-table-wrap { overflow: auto; max-height: 480px; border: 1px solid #e5e7eb; border-radius: 6px; }
+        .sr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .sr-table th, .sr-table td {
+            padding: 8px 10px; text-align: left; border-bottom: 1px solid #f1f5f9;
+            vertical-align: top;
+        }
+        .sr-table th { background: #f8fafc; color: #64748b; font-weight: 600; position: sticky; top: 0; z-index: 1; }
+        .sr-table tr.selected { background: #eef2ff; }
+        .sr-table tr:hover { background: #f9fafb; }
+        .sr-table td.content { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #475569; }
+        .sr-table .row-actions { display: flex; gap: 6px; }
+        .sr-table .row-actions button {
+            padding: 4px 10px; font-size: 12px; border: 1px solid #d1d5db;
+            background: #fff; border-radius: 4px; cursor: pointer;
+        }
+        .sr-table .row-actions button.danger { color: #dc2626; border-color: #fecaca; }
+        .sr-empty { padding: 24px; text-align: center; color: #94a3b8; font-size: 13px; }
+        .sr-kb-batch-bar {
+            display: flex; gap: 10px; align-items: center;
+            padding: 8px 0; font-size: 13px; color: #475569;
+        }
+        .sr-batch-count { color: #4f46e5; font-weight: 600; }
+
+        /* 检索结果 */
+        .sr-kb-answer {
+            background: #f8fafc; border-radius: 6px; padding: 14px;
+            font-size: 14px; line-height: 1.7; color: #1e293b;
+            white-space: pre-wrap; min-height: 60px;
+        }
+        .sr-kb-sources { display: flex; flex-direction: column; gap: 8px; }
+        .sr-source-item {
+            border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px;
+            background: #fff;
+        }
+        .sr-source-item .title { font-weight: 600; color: #1e293b; font-size: 13px; margin-bottom: 4px; }
+        .sr-source-item .meta { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+        .sr-source-item .content { font-size: 13px; color: #475569; line-height: 1.6; }
+        .hidden { display: none !important; }
+        .sr-demo-btn { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; }
+        .sr-demo-btn:hover { background: linear-gradient(135deg, #4f46e5, #7c3aed); }
+    </style>
+</head>
+<body>
+    <!-- 侧边栏 -->
+    <div class="sr-sidebar" id="srSidebar">
+        <div class="sr-sidebar-header">
+            <div class="sr-brand">📈 股票研报助手</div>
+            <div class="sr-brand-sub">AI 驱动的智能研报系统</div>
+        </div>
+        <button class="sr-new-btn" onclick="srNewSession()">+ 新建研报</button>
+        <div class="sr-session-list" id="srSessionList"></div>
+        <div class="sr-sidebar-footer">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <span class="sr-user-badge" id="srUserBadge">访客模式</span>
+                <a href="/login?redirect=/stock_research" id="srAuthBtn" style="font-size:12px;color:#818cf8;text-decoration:none;">登录</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主区域 -->
+    <div class="sr-main">
+        <!-- Tab 切换栏 -->
+        <div class="sr-tabs">
+            <button class="sr-tab active" data-tab="research" onclick="srSwitchTab('research')">📈 研报对话</button>
+            <button class="sr-tab" data-tab="kb-manage" onclick="srSwitchTab('kb-manage')">📚 知识维护</button>
+            <button class="sr-tab" data-tab="kb-search" onclick="srSwitchTab('kb-search')">🔍 知识检索</button>
+        </div>
+
+        <!-- ===== Tab: 研报对话 ===== -->
+        <div class="sr-tab-panel active" id="srTabResearch">
+            <!-- 顶部栏 -->
+            <div class="sr-topbar">
+                <input class="sr-search-input" id="srStockInput" placeholder="输入股票代码或名称（如 000001 / 中国铝业）..." />
+                <select class="sr-prompt-select" id="srPromptSelect">
+                    <option value="">默认分析</option>
+                </select>
+                <button class="sr-prompt-manage-btn" onclick="srShowPromptModal()">管理模板</button>
+            </div>
+
+            <!-- 报告区域 -->
+            <div class="sr-report-area" id="srReportArea">
+                <div class="sr-welcome" id="srWelcome">
+                    <div class="sr-welcome-icon">📈</div>
+                    <div class="sr-welcome-title">股票研报助手</div>
+                    <div class="sr-welcome-desc">输入股票代码或名称，获取 AI 生成的专业研报</div>
+                    <div class="sr-welcome-examples">
+                        <button class="sr-example-btn" onclick="srQuickQuery('分析 000001 平安银行')">分析 000001</button>
+                        <button class="sr-example-btn" onclick="srQuickQuery('深度研报 600519 贵州茅台')">深度研报 600519</button>
+                        <button class="sr-example-btn" onclick="srQuickQuery('行业对比 000858 五粮液')">行业对比 000858</button>
+                        <button class="sr-example-btn sr-demo-btn" onclick="srRunDemo()">🎯 演示模式</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 输入区 -->
+            <div class="sr-input-area">
+                <textarea class="sr-input" id="srInput" placeholder="输入股票代码或名称（如 中国铝业）... (Enter 发送, Shift+Enter 换行)" rows="1"></textarea>
+                <button class="sr-send-btn" id="srSendBtn" onclick="srSend()">发送</button>
+            </div>
+        </div>
+
+        <!-- ===== Tab: 知识库维护 ===== -->
+        <div class="sr-tab-panel" id="srTabKbManage">
+            <div class="sr-kb-section">
+                <h3>➕ 新增知识</h3>
+                <form id="srKbAddForm" class="sr-kb-form">
+                    <label class="sr-field">
+                        <span>标题</span>
+                        <input type="text" id="srKbTitle" required maxlength="200" placeholder="例如：公司请假制度" />
+                    </label>
+                    <label class="sr-field">
+                        <span>来源（可选）</span>
+                        <input type="text" id="srKbSource" maxlength="200" placeholder="例如：员工手册 v3.2" />
+                    </label>
+                    <label class="sr-field">
+                        <span>正文</span>
+                        <textarea id="srKbContent" rows="5" required placeholder="请输入知识正文，支持多段文本..."></textarea>
+                    </label>
+                    <div class="sr-kb-actions">
+                        <button type="submit" class="sr-btn primary">保存到知识库</button>
+                        <button type="reset" class="sr-btn">清空</button>
+                    </div>
+                    <p id="srKbFormMsg" class="sr-msg"></p>
+                </form>
+            </div>
+
+            <div class="sr-kb-section">
+                <h3>📤 上传文件入库</h3>
+                <p class="sr-hint">支持 txt / md / pdf，上传后自动切分（500 字/段，重叠 80）批量写入。</p>
+                <form id="srKbUploadForm" class="sr-kb-form">
+                    <div id="srKbDropZone" class="sr-dropzone">
+                        <input type="file" id="srKbFileInput" accept=".txt,.md,.markdown,.pdf" multiple hidden />
+                        <p class="sr-drop-title">点击或拖拽文件到此处上传</p>
+                        <p class="sr-drop-sub">支持多文件 · txt / md / pdf</p>
+                    </div>
+                    <div id="srKbFileList" class="sr-file-list"></div>
+                    <div class="sr-kb-actions">
+                        <button type="submit" class="sr-btn primary" id="srKbUploadBtn">开始上传</button>
+                        <button type="button" class="sr-btn" id="srKbClearFilesBtn">清空选择</button>
+                    </div>
+                    <p id="srKbUploadMsg" class="sr-msg"></p>
+                </form>
+            </div>
+
+            <div class="sr-kb-section">
+                <div class="sr-kb-section-head">
+                    <h3>📋 知识列表</h3>
+                    <div class="sr-kb-toolbar">
+                        <input type="text" id="srKbKeyword" placeholder="按标题过滤..." />
+                        <button class="sr-btn" id="srKbRefreshBtn">刷新</button>
+                    </div>
+                </div>
+                <div class="sr-kb-batch-bar" id="srKbBatchBar">
+                    <span id="srKbBatchCount" class="sr-batch-count">已选 0 项</span>
+                    <button class="sr-btn danger" id="srKbBatchDeleteBtn" disabled>批量删除</button>
+                    <button class="sr-btn" id="srKbBatchClearBtn">取消选择</button>
+                </div>
+                <div class="sr-table-wrap">
+                    <table class="sr-table">
+                        <thead>
+                            <tr>
+                                <th style="width:36px"><input type="checkbox" id="srKbSelectAll" title="全选/取消全选" /></th>
+                                <th style="width:22%">标题</th>
+                                <th>正文</th>
+                                <th style="width:14%">来源</th>
+                                <th style="width:14%">创建时间</th>
+                                <th style="width:12%">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="srKbTbody"></tbody>
+                    </table>
+                    <p id="srKbEmptyHint" class="sr-empty hidden">暂无知识数据，先在上方添加一条吧</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Tab: 知识库检索 ===== -->
+        <div class="sr-tab-panel" id="srTabKbSearch">
+            <div class="sr-kb-section">
+                <h3>🔍 知识库检索问答</h3>
+                <form id="srKbSearchForm" class="sr-kb-form">
+                    <label class="sr-field">
+                        <span>问题</span>
+                        <textarea id="srKbQuery" rows="3" required placeholder="请输入你的问题，例如：年假怎么折算？"></textarea>
+                    </label>
+                    <label class="sr-field inline">
+                        <span>召回数量 K</span>
+                        <input type="number" id="srKbK" min="1" max="10" value="4" />
+                    </label>
+                    <label class="sr-field inline">
+                        <input type="checkbox" id="srKbAgentMode" />
+                        <span>Agent 模式（由大模型自主决定是否检索知识库）</span>
+                    </label>
+                    <div class="sr-kb-actions">
+                        <button type="submit" class="sr-btn primary" id="srKbSearchBtn">检索并回答</button>
+                        <button type="button" class="sr-btn" id="srKbRawBtn">仅看召回结果</button>
+                    </div>
+                    <p id="srKbSearchMsg" class="sr-msg"></p>
+                </form>
+            </div>
+
+            <div class="sr-kb-section">
+                <h3>💬 回答</h3>
+                <div id="srKbAnswerBox" class="sr-kb-answer">尚无结果，先在上方输入问题后检索。</div>
+            </div>
+
+            <div class="sr-kb-section">
+                <h3>📎 来源文档</h3>
+                <div id="srKbSourcesBox" class="sr-kb-sources"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 知识编辑弹窗 -->
+    <div class="sr-modal-overlay" id="srKbEditModal">
+        <div class="sr-modal">
+            <div class="sr-modal-header">
+                <div class="sr-modal-title">编辑知识</div>
+                <button class="sr-modal-close" onclick="srKbHideEditModal()">&times;</button>
+            </div>
+            <div class="sr-modal-body">
+                <form id="srKbEditForm" class="sr-kb-form">
+                    <input type="hidden" id="srKbEditId" />
+                    <label class="sr-field">
+                        <span>标题</span>
+                        <input type="text" id="srKbEditTitle" required maxlength="200" />
+                    </label>
+                    <label class="sr-field">
+                        <span>来源（可选）</span>
+                        <input type="text" id="srKbEditSource" maxlength="200" />
+                    </label>
+                    <label class="sr-field">
+                        <span>正文</span>
+                        <textarea id="srKbEditContent" rows="6" required></textarea>
+                    </label>
+                    <div class="sr-kb-actions">
+                        <button type="submit" class="sr-btn primary">保存修改</button>
+                        <button type="button" class="sr-btn" id="srKbCancelEdit">取消</button>
+                    </div>
+                    <p id="srKbEditMsg" class="sr-msg"></p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示词管理弹窗 -->
+    <div class="sr-modal-overlay" id="srPromptModal">
+        <div class="sr-modal">
+            <div class="sr-modal-header">
+                <div class="sr-modal-title">提示词模板管理</div>
+                <button class="sr-modal-close" onclick="srHidePromptModal()">&times;</button>
+            </div>
+            <div class="sr-modal-body" id="srPromptList"></div>
+        </div>
+    </div>
+
+    <script src="/static/stock_research.js?v=6"></script>
+</body>
+</html>

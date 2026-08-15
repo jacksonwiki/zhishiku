@@ -1,0 +1,33 @@
+[project]
+name = "zhishiku"
+version = "0.1.0"
+description = "基于 LangChain + 千问 + Chroma 的 RAG 知识库"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "python-multipart>=0.0.9",
+    "python-dotenv>=1.0.1",
+    "langchain>=0.2.0",
+    "langchain-core>=0.2.0",
+    "langchain-community>=0.2.0",
+    "langchain-chroma>=0.1.0",
+    "langchain-deepseek>=1.0.0",
+    "chromadb>=0.5.0",
+    "dashscope>=1.17.0",
+    "pypdf>=4.0.0",
+    "onnxruntime>=1.20.0,<1.24.0",
+    "markdown>=3.10.3",
+    "reportlab>=4.0,<5",
+    "pyjwt>=2.13.0",
+    "langchain-ollama>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

@@ -1,0 +1,21 @@
+# 环境变量
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+
+# Chroma 数据
+data/
+
+# 运行时 PID / 日志
+.run/
+
+# IDE
+.idea/
+.vscode/
+
+# 系统
+.DS_Store

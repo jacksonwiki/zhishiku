@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>知识库维护 - RAG 系统</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">📚 RAG 知识库</div>
+        <nav class="nav">
+            <a class="nav-link active" href="/">知识维护</a>
+            <a class="nav-link" href="/search">检索问答</a>
+            <a class="nav-link" href="/customer_service">智能客服</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2>新增知识</h2>
+            <form id="addForm" class="form">
+                <label class="field">
+                    <span>标题</span>
+                    <input type="text" id="title" required maxlength="200" placeholder="例如：公司请假制度" />
+                </label>
+                <label class="field">
+                    <span>来源（可选）</span>
+                    <input type="text" id="source" maxlength="200" placeholder="例如：员工手册 v3.2" />
+                </label>
+                <label class="field">
+                    <span>正文</span>
+                    <textarea id="content" rows="6" required placeholder="请输入知识正文，支持多段文本..."></textarea>
+                </label>
+                <div class="actions">
+                    <button type="submit" class="btn primary">保存到知识库</button>
+                    <button type="reset" class="btn">清空</button>
+                </div>
+                <p id="formMsg" class="msg"></p>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>上传文件入库</h2>
+            <p class="hint">支持 txt / md / pdf，上传后自动切分（500 字/段，重叠 80）批量写入。</p>
+            <form id="uploadForm" class="form">
+                <div id="dropZone" class="dropzone">
+                    <input type="file" id="fileInput" accept=".txt,.md,.markdown,.pdf" multiple hidden />
+                    <p class="drop-title">点击或拖拽文件到此处上传</p>
+                    <p class="drop-sub">支持多文件 · txt / md / pdf</p>
+                </div>
+                <div id="fileList" class="file-list"></div>
+                <div class="actions">
+                    <button type="submit" class="btn primary" id="uploadBtn">开始上传</button>
+                    <button type="button" class="btn" id="clearFilesBtn">清空选择</button>
+                </div>
+                <p id="uploadMsg" class="msg"></p>
+            </form>
+        </section>
+
+        <section class="card">
+            <div class="row between">
+                <h2>知识列表</h2>
+                <div class="row">
+                    <input type="text" id="keyword" placeholder="按标题过滤..." />
+                    <button class="btn" id="refreshBtn">刷新</button>
+                </div>
+            </div>
+            <div class="row batch-bar" id="batchBar">
+                <span id="batchCount" class="batch-count">已选 0 项</span>
+                <button class="btn danger" id="batchDeleteBtn" disabled>批量删除</button>
+                <button class="btn" id="batchClearBtn">取消选择</button>
+            </div>
+            <div id="tableWrap" class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 36px"><input type="checkbox" id="selectAll" title="全选/取消全选" /></th>
+                            <th style="width: 22%">标题</th>
+                            <th>正文</th>
+                            <th style="width: 14%">来源</th>
+                            <th style="width: 14%">创建时间</th>
+                            <th style="width: 12%">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+                <p id="emptyHint" class="empty hidden">暂无知识数据，先在上方添加一条吧</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- 编辑弹窗 -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-card">
+            <h3>编辑知识</h3>
+            <form id="editForm" class="form">
+                <input type="hidden" id="editId" />
+                <label class="field">
+                    <span>标题</span>
+                    <input type="text" id="editTitle" required maxlength="200" />
+                </label>
+                <label class="field">
+                    <span>来源（可选）</span>
+                    <input type="text" id="editSource" maxlength="200" />
+                </label>
+                <label class="field">
+                    <span>正文</span>
+                    <textarea id="editContent" rows="6" required></textarea>
+                </label>
+                <div class="actions">
+                    <button type="submit" class="btn primary">保存修改</button>
+                    <button type="button" class="btn" id="cancelEdit">取消</button>
+                </div>
+                <p id="editMsg" class="msg"></p>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

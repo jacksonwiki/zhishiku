@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>登录 - RAG 系统</title>
+    <link rel="stylesheet" href="/static/styles.css?v=4" />
+    <style>
+        .auth-wrap { max-width: 380px; margin: 80px auto; }
+        .auth-tabs { display: flex; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
+        .auth-tab {
+            flex: 1; padding: 10px; text-align: center; cursor: pointer;
+            color: var(--muted); border-bottom: 2px solid transparent;
+            font-weight: 600; transition: all 0.15s;
+        }
+        .auth-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .auth-form { display: flex; flex-direction: column; gap: 14px; }
+        .auth-form .field { display: flex; flex-direction: column; gap: 6px; }
+        .auth-form label { font-size: 13px; color: var(--muted); }
+        .auth-form .btn { width: 100%; padding: 10px; }
+        .auth-msg { font-size: 13px; min-height: 18px; }
+        .auth-msg.error { color: var(--danger); }
+        .auth-msg.success { color: #059669; }
+        .auth-extra { display: flex; justify-content: center; gap: 10px; font-size: 13px; margin-top: 10px; }
+        .auth-extra a { color: var(--primary); cursor: pointer; text-decoration: none; }
+        .auth-extra a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">📚 RAG 知识库</div>
+        <nav class="nav">
+            <a class="nav-link" href="/">知识维护</a>
+            <a class="nav-link" href="/search">检索问答</a>
+            <a class="nav-link" href="/customer_service">智能客服</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="card auth-wrap">
+            <div class="auth-tabs">
+                <div class="auth-tab active" id="tabLogin" onclick="switchTab('login')">登录</div>
+                <div class="auth-tab" id="tabRegister" onclick="switchTab('register')">注册</div>
+            </div>
+
+            <form class="auth-form" id="authForm">
+                <div class="field">
+                    <label for="username">用户名</label>
+                    <input id="username" type="text" autocomplete="username" required minlength="2" maxlength="32" />
+                </div>
+                <div class="field">
+                    <label for="password">密码</label>
+                    <input id="password" type="password" autocomplete="current-password" required minlength="4" maxlength="128" />
+                </div>
+                <div class="field" id="displayNameField" style="display:none">
+                    <label for="displayName">昵称（可选）</label>
+                    <input id="displayName" type="text" maxlength="32" />
+                </div>
+                <div class="auth-msg" id="authMsg"></div>
+                <button type="button" class="btn primary" id="submitBtn">登录</button>
+            </form>
+
+            <div class="auth-extra">
+                <a id="guestLink" href="/customer_service">以访客身份继续</a>
+            </div>
+        </section>
+    </main>
+
+<script>
+    let mode = "login";
+
+    function switchTab(m) {
+        mode = m;
+        document.getElementById("tabLogin").classList.toggle("active", m === "login");
+        document.getElementById("tabRegister").classList.toggle("active", m === "register");
+        document.getElementById("displayNameField").style.display = m === "register" ? "" : "none";
+        document.getElementById("submitBtn").textContent = m === "login" ? "登录" : "注册";
+        document.getElementById("authMsg").textContent = "";
+        document.getElementById("authMsg").className = "auth-msg";
+    }
+
+    function showMsg(text, type) {
+        const el = document.getElementById("authMsg");
+        el.textContent = text;
+        el.className = "auth-msg " + (type || "");
+    }
+
+    function saveAuthAndRedirect(token, user) {
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(user));
+        const back = new URLSearchParams(location.search).get("redirect") || "/customer_service";
+        location.href = back;
+    }
+
+    async function submit() {
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value;
+        const displayName = document.getElementById("displayName").value.trim();
+        if (!username || password.length < 4) {
+            showMsg("用户名至少 2 字符，密码至少 4 字符", "error");
+            return;
+        }
+        document.getElementById("submitBtn").disabled = true;
+        showMsg("处理中...");
+        try {
+            const url = mode === "login" ? "/api/auth/login" : "/api/auth/register";
+            const body = mode === "login"
+                ? { username, password }
+                : { username, password, display_name: displayName || null };
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(formatError(data, res.status));
+            showMsg("成功，跳转中...", "success");
+            saveAuthAndRedirect(data.token, data.user);
+        } catch (e) {
+            showMsg(e.message || "请求失败，请重试", "error");
+        } finally {
+            document.getElementById("submitBtn").disabled = false;
+        }
+    }
+
+    // 格式化后端错误为友好提示
+    function formatError(data, status) {
+        const detail = data && data.detail;
+        const fieldLabel = (f) => ({username:"用户名",password:"密码",display_name:"昵称"})[f] || f;
+        const translateMsg = (msg, ctx) => {
+            if (!msg) return "";
+            const min = ctx && ctx.min_length;
+            const max = ctx && ctx.max_length;
+            if (/should have at least/.test(msg) && min) return `长度不能少于 ${min} 个字符`;
+            if (/should have at most/.test(msg) && max) return `长度不能超过 ${max} 个字符`;
+            if (/String should have at least/.test(msg) && min) return `长度不能少于 ${min} 个字符`;
+            if (/String should have at most/.test(msg) && max) return `长度不能超过 ${max} 个字符`;
+            if (/missing/.test(msg)) return "此字段必填";
+            if (/not a valid string/.test(msg)) return "格式应为文本";
+            return msg;
+        };
+        // 422 字段校验错误：detail 是数组
+        if (Array.isArray(detail)) {
+            const msgs = detail.map(it => {
+                const field = (it.loc || []).slice(-1)[0];
+                const msg = translateMsg(it.msg, it.ctx);
+                const label = fieldLabel(field);
+                return label ? `${label}: ${msg}` : msg;
+            });
+            return msgs.join("；");
+        }
+        // 业务错误：detail 是字符串
+        if (typeof detail === "string" && detail) return detail;
+        // 兜底
+        if (status === 401) return "用户名或密码错误";
+        if (status === 400) return "请求失败，请检查输入";
+        if (status === 409) return "用户名已存在";
+        if (status >= 500) return "服务器错误，请稍后重试";
+        return `请求失败 (${status})`;
+    }
+
+    document.getElementById("password").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") submit();
+    });
+    document.getElementById("submitBtn").addEventListener("click", (e) => {
+        e.preventDefault();
+        submit();
+    });
+    document.getElementById("username").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") document.getElementById("password").focus();
+    });
+</script>
+</body>
+</html>

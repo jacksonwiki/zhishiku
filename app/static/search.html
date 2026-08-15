@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>检索问答 - RAG 系统</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">📚 RAG 知识库</div>
+        <nav class="nav">
+            <a class="nav-link" href="/">知识维护</a>
+            <a class="nav-link active" href="/search">检索问答</a>
+            <a class="nav-link" href="/customer_service">智能客服</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2>知识库检索问答</h2>
+            <form id="searchForm" class="form">
+                <label class="field">
+                    <span>问题</span>
+                    <textarea id="query" rows="3" required placeholder="请输入你的问题，例如：年假怎么折算？"></textarea>
+                </label>
+                <label class="field inline">
+                    <span>召回数量 K</span>
+                    <input type="number" id="k" min="1" max="10" value="4" />
+                </label>
+                <label class="field inline mode-toggle">
+                    <input type="checkbox" id="agentMode" />
+                    <span>Agent 模式（由大模型自主决定是否检索知识库）</span>
+                </label>
+                <div class="actions">
+                    <button type="submit" class="btn primary" id="searchBtn">检索并回答</button>
+                    <button type="button" class="btn" id="rawBtn">仅看召回结果</button>
+                </div>
+                <p id="searchMsg" class="msg"></p>
+            </form>
+        </section>
+
+        <section class="card">
+            <h3>回答</h3>
+            <div id="answerBox" class="answer">尚无结果，先在上方输入问题后检索。</div>
+        </section>
+
+        <section class="card">
+            <h3>来源文档</h3>
+            <div id="sourcesBox" class="sources"></div>
+        </section>
+    </main>
+
+    <script src="/static/search.js"></script>
+</body>
+</html>
