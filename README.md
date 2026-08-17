@@ -39,7 +39,7 @@
 ```bash
 # 克隆项目
 git clone <your-repo-url>
-cd zhishiku
+cd stock_research
 
 # 安装依赖（推荐使用 uv）
 uv pip install -r pyproject.toml
@@ -223,7 +223,7 @@ flowchart TB
 ## 📂 项目结构
 
 ```
-zhishiku/
+stock_research/
 ├── app/
 │   ├── main.py              # 应用入口
 │   ├── config.py            # 配置管理

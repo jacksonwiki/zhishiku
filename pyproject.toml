@@ -1,5 +1,5 @@
 [project]
-name = "zhishiku"
+name = "stock_research"
 version = "0.1.0"
 description = "基于 LangChain + 千问 + Chroma 的 RAG 知识库"
 requires-python = ">=3.11"
@@ -21,6 +21,8 @@ dependencies = [
     "reportlab>=4.0,<5",
     "pyjwt>=2.13.0",
     "langchain-ollama>=1.1.0",
+    "langchain-mcp-adapters>=0.3.2",
+    "ipykernel>=7.3.0",
 ]
 
 [project.optional-dependencies]

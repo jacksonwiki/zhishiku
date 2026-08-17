@@ -61,7 +61,7 @@ class Settings:
             llm_model=os.getenv("LLM_MODEL", "qwen-plus"),
             embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-v2"),
             chroma_persist_dir=persist_dir,
-            chroma_collection_name=os.getenv("CHROMA_COLLECTION_NAME", "zhishiku"),
+            chroma_collection_name=os.getenv("CHROMA_COLLECTION_NAME", "stock_research"),
             chat_db=chat_db,
             jwt_secret=os.getenv("JWT_SECRET", "change-me-in-production-please"),
             jwt_algo=os.getenv("JWT_ALGO", "HS256"),
